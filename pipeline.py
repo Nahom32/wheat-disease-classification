@@ -136,14 +136,17 @@ def main():
     parser.add_argument('--all', action='store_true', help='Run all registered experiments')
     parser.add_argument('--download', action='store_true',
                         help='Download dataset from Google Drive before running')
-    parser.add_argument('--data-root', default='data/wfd',
-                        help='Local data directory (default: data/wfd)')
+    parser.add_argument('--data-root', default=None,
+                        help='Local data directory (overrides config paths)')
     parser.add_argument('--seed', type=int, default=None, help='Random seed (overrides config)')
     args = parser.parse_args()
 
-    # Download step
+    # Resolve data root
+    data_root = args.data_root
     if args.download:
-        download_data(args.data_root)
+        download_data(data_root or 'data/wfd')
+        if data_root is None:
+            data_root = 'data/wfd'
 
     # Determine experiments to run
     if args.all:
@@ -155,7 +158,7 @@ def main():
 
     results = []
     for name in exp_names:
-        summary = run_experiment(name, seed=args.seed, data_root=args.data_root)
+        summary = run_experiment(name, seed=args.seed, data_root=data_root)
         results.append(summary)
 
     # Comparison table
