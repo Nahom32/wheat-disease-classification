@@ -19,7 +19,8 @@ from torch.utils.data import DataLoader
 from experiments.registry import get_experiment, list_experiments
 from data.dataset import WFD2020Dataset, get_train_transforms, get_eval_transforms
 from models.builder import build_model
-from evaluation.plotting import generate_report
+from evaluation.plotting import generate_report, plot_comparison_bar, plot_per_class_comparison
+from evaluation.benchmark import write_benchmark
 
 
 def resolve_paths(cfg, data_root=None):
@@ -157,11 +158,27 @@ def main():
         return  # download-only mode
 
     results = []
+    labels = None
     for name in exp_names:
         summary = run_experiment(name, seed=args.seed, data_root=data_root)
         results.append(summary)
+        if labels is None and 'config' in summary:
+            labels = summary['config'].get('labels', [])
 
-    # Comparison table
+    if len(results) > 0:
+        # Persistent benchmark files (CSV + JSON)
+        write_benchmark(results)
+
+        # Cross-experiment comparison plots
+        figure_dir = os.path.join('outputs', 'figures', 'comparison')
+        os.makedirs(figure_dir, exist_ok=True)
+        plot_comparison_bar(results, os.path.join(figure_dir, 'f1_comparison.png'))
+        if labels:
+            plot_per_class_comparison(results, labels,
+                                      os.path.join(figure_dir, 'per_class_comparison.png'))
+        print(f"Comparison figures saved to {figure_dir}/")
+
+    # Console comparison table
     print(f"\n{'='*60}")
     print("EXPERIMENT COMPARISON")
     print(f"{'='*60}")
