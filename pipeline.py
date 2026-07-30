@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Main pipeline: run one or more experiments, compare results.
+"""Main pipeline: download data, run experiments, compare results.
 
 Usage:
-    python pipeline.py --experiments efficientnet_b4 convnext_small
-    python pipeline.py --experiments efficientnet_b4 --seed 123
-    python pipeline.py --all
+    python pipeline.py --download                          # download data only
+    python pipeline.py --experiments efficientnet_b4       # run specific
+    python pipeline.py --all                               # run all
+    python pipeline.py --download --all                    # download + run all
 """
 
 import argparse
@@ -21,9 +22,48 @@ from models.builder import build_model
 from evaluation.plotting import generate_report
 
 
-def run_experiment(name, seed=None):
+def resolve_paths(cfg, data_root=None):
+    """Update config paths if a local data root is provided."""
+    if data_root is None:
+        return cfg
+    cfg.image_dir = os.path.join(data_root, "wfd_dataset")
+    cfg.train_csv = os.path.join(data_root, "csv", "data_train.csv")
+    cfg.valid_csv = os.path.join(data_root, "csv", "data_valid.csv")
+    cfg.test_csv = os.path.join(data_root, "csv", "data_test.csv")
+    return cfg
+
+
+def download_data(data_root: str):
+    """Download the WFD-2020 dataset if it doesn't already exist."""
+    from data.downloader import download_wfd_dataset
+
+    images_dir = os.path.join(data_root, "wfd_dataset")
+    csv_dir = os.path.join(data_root, "csv")
+
+    images_exist = os.path.isdir(images_dir) and bool(os.listdir(images_dir))
+    csv_exist = (
+        os.path.isdir(csv_dir)
+        and all(
+            os.path.isfile(os.path.join(csv_dir, f))
+            for f in ["data_train.csv", "data_valid.csv", "data_test.csv"]
+        )
+    )
+
+    if images_exist and csv_exist:
+        print("Dataset already downloaded, skipping.")
+        return
+
+    download_wfd_dataset(
+        data_root=data_root,
+        download_images=not images_exist,
+        download_csv=not csv_exist,
+    )
+
+
+def run_experiment(name, seed=None, data_root=None):
     config_cls, trainer_cls = get_experiment(name)
     cfg = config_cls()
+    cfg = resolve_paths(cfg, data_root)
     if seed is not None:
         cfg.seed = seed
 
@@ -92,20 +132,30 @@ def run_experiment(name, seed=None):
 
 def main():
     parser = argparse.ArgumentParser(description='WFD-2020 Wheat Disease Classification Pipeline')
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--experiments', nargs='+', help='Experiment names to run')
-    group.add_argument('--all', action='store_true', help='Run all registered experiments')
+    parser.add_argument('--experiments', nargs='+', help='Experiment names to run')
+    parser.add_argument('--all', action='store_true', help='Run all registered experiments')
+    parser.add_argument('--download', action='store_true',
+                        help='Download dataset from Google Drive before running')
+    parser.add_argument('--data-root', default='data/wfd',
+                        help='Local data directory (default: data/wfd)')
     parser.add_argument('--seed', type=int, default=None, help='Random seed (overrides config)')
     args = parser.parse_args()
 
+    # Download step
+    if args.download:
+        download_data(args.data_root)
+
+    # Determine experiments to run
     if args.all:
         exp_names = list_experiments()
-    else:
+    elif args.experiments:
         exp_names = args.experiments
+    else:
+        return  # download-only mode
 
     results = []
     for name in exp_names:
-        summary = run_experiment(name, seed=args.seed)
+        summary = run_experiment(name, seed=args.seed, data_root=args.data_root)
         results.append(summary)
 
     # Comparison table
