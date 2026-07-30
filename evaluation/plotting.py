@@ -106,3 +106,60 @@ def generate_report(cfg, history: dict, test_labels: np.ndarray,
 
     print(f"Figures saved to {figure_dir}/")
     return f1_dict
+
+
+def plot_comparison_bar(results_summaries: list, save_path: str):
+    """Cross-experiment bar chart comparing F1 micro and macro scores."""
+    names = [r['experiment'] for r in results_summaries]
+    f1_micro = [r['test_f1_micro'] for r in results_summaries]
+    f1_macro = [r['test_f1_macro'] for r in results_summaries]
+
+    x = np.arange(len(names))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars1 = ax.bar(x - width/2, f1_micro, width, label='F1 Micro')
+    bars2 = ax.bar(x + width/2, f1_macro, width, label='F1 Macro')
+
+    ax.set_ylabel('F1 Score')
+    ax.set_title('Cross-Experiment Comparison')
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=30, ha='right')
+    ax.legend()
+    ax.grid(axis='y')
+
+    for bar in bars1:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.005,
+                f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
+    for bar in bars2:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.005,
+                f'{bar.get_height():.3f}', ha='center', va='bottom', fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
+
+
+def plot_per_class_comparison(results_summaries: list, labels: list, save_path: str):
+    """Cross-experiment per-class F1 grouped bar chart."""
+    n_classes = len(labels)
+    n_exp = len(results_summaries)
+
+    x = np.arange(n_classes)
+    width = 0.8 / n_exp
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    for i, r in enumerate(results_summaries):
+        scores = [r['per_class_f1'].get(cls, 0) for cls in labels]
+        offset = (i - (n_exp - 1) / 2) * width
+        ax.bar(x + offset, scores, width, label=r['experiment'])
+
+    ax.set_ylabel('F1 Score')
+    ax.set_title('Per-Class F1 Comparison Across Experiments')
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.legend()
+    ax.grid(axis='y')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close()
