@@ -8,3 +8,4 @@ numpy
 scikit-learn
 matplotlib
 tqdm
+gdown>=5.0.0
