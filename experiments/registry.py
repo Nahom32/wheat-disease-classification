@@ -7,6 +7,7 @@ Usage:
 
 from configs.efficientnet_b4 import EfficientNetB4Config
 from configs.convnext_small import ConvNeXtSmallConfig
+from configs.convnext_medium import ConvNeXtMediumConfig
 from training.trainer import Trainer
 
 _registry = {}
@@ -30,3 +31,4 @@ def list_experiments():
 
 register('efficientnet_b4', EfficientNetB4Config, Trainer)
 register('convnext_small', ConvNeXtSmallConfig, Trainer)
+register('convnext_medium', ConvNeXtMediumConfig, Trainer)
