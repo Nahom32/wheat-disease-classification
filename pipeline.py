@@ -6,6 +6,8 @@ Usage:
     python pipeline.py --experiments efficientnet_b4       # run specific
     python pipeline.py --all                               # run all
     python pipeline.py --download --all                    # download + run all
+    python pipeline.py --all --reset                       # re-run all experiments
+    # Completed experiments are checkpointed and skipped on re-run.
 """
 
 import argparse
@@ -21,6 +23,38 @@ from data.dataset import WFD2020Dataset, get_train_transforms, get_eval_transfor
 from models.builder import build_model
 from evaluation.plotting import generate_report, plot_comparison_bar, plot_per_class_comparison
 from evaluation.benchmark import write_benchmark
+
+DEFAULT_CHECKPOINT = os.path.join('outputs', 'pipeline_checkpoint.json')
+
+
+def _load_checkpoint(path):
+    """Load the pipeline checkpoint dict from disk. Returns {} if absent/corrupt."""
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        print(f"Checkpoint {path} is unreadable; starting fresh.")
+        return {}
+
+
+def _save_checkpoint(path, state):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp_path = path + '.tmp'
+    with open(tmp_path, 'w') as f:
+        json.dump(state, f, indent=2)
+    os.replace(tmp_path, path)
+
+
+def _experiment_fingerprint(name, seed=None, data_root=None):
+    """Fingerprint of an experiment's resolved config; used to detect changes."""
+    config_cls, _ = get_experiment(name)
+    cfg = config_cls()
+    cfg = resolve_paths(cfg, data_root)
+    if seed is not None:
+        cfg.seed = seed
+    return json.dumps(cfg.to_dict(), sort_keys=True, default=str)
 
 
 def resolve_paths(cfg, data_root=None):
@@ -140,6 +174,10 @@ def main():
     parser.add_argument('--data-root', default=None,
                         help='Local data directory (overrides config paths)')
     parser.add_argument('--seed', type=int, default=None, help='Random seed (overrides config)')
+    parser.add_argument('--checkpoint', default=DEFAULT_CHECKPOINT,
+                        help='Path to the pipeline checkpoint file (resumes completed experiments)')
+    parser.add_argument('--reset', action='store_true',
+                        help='Ignore and clear the existing checkpoint before running')
     args = parser.parse_args()
 
     # Resolve data root
@@ -157,10 +195,26 @@ def main():
     else:
         return  # download-only mode
 
+    state = _load_checkpoint(args.checkpoint)
+    if args.reset and state:
+        print(f"Clearing checkpoint {args.checkpoint}.")
+        state = {}
+
     results = []
     labels = None
     for name in exp_names:
-        summary = run_experiment(name, seed=args.seed, data_root=data_root)
+        fingerprint = _experiment_fingerprint(name, seed=args.seed, data_root=data_root)
+
+        if name in state and state[name].get('fingerprint') == fingerprint:
+            print(f"Experiment {name} already completed; skipping (resuming from checkpoint).")
+            summary = state[name]['summary']
+        else:
+            if name in state:
+                print(f"Experiment {name} config changed; re-running.")
+            summary = run_experiment(name, seed=args.seed, data_root=data_root)
+            state[name] = {'fingerprint': fingerprint, 'summary': summary}
+            _save_checkpoint(args.checkpoint, state)
+
         results.append(summary)
         if labels is None and 'config' in summary:
             labels = summary['config'].get('labels', [])
