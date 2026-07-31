@@ -41,10 +41,13 @@ python pipeline.py --download
 
 This downloads the image folder and CSVs to `data/wfd/`. Requires `gdown` (included in `requirements.txt`).
 
-Google Drive throttles large downloads, so the downloader retries automatically with exponential backoff (default 5 attempts, starting at 5s) and resumes interrupted files where possible. Each file in a folder is downloaded individually so a throttled file is retried on its own instead of restarting the whole folder. Tune with:
+Google Drive throttles large downloads, so the downloader retries automatically with exponential backoff (default 5 attempts, starting at 5s) and resumes interrupted files where possible. Each file in a folder is downloaded individually so a throttled file is retried on its own instead of restarting the whole folder. Download options (available on both `pipeline.py` and `data/downloader.py`):
 
 ```bash
-python pipeline.py --download --max-attempts 10 --retry-delay 10
+python pipeline.py --download --max-attempts 10 --retry-delay 10   # tune retries
+python pipeline.py --download --folder-id <folder_id>              # different Drive folder
+python pipeline.py --download --skip-images                        # CSVs only
+python pipeline.py --download --skip-csv                           # images only
 ```
 
 ### Option B: Manual paths

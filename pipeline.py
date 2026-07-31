@@ -68,8 +68,19 @@ def resolve_paths(cfg, data_root=None):
     return cfg
 
 
-def download_data(data_root: str):
-    """Download the WFD-2020 dataset if it doesn't already exist."""
+def download_data(data_root: str, folder_id: str = None, download_images: bool = True,
+                  download_csv: bool = True, max_attempts: int = None,
+                  retry_delay: float = None):
+    """Download the WFD-2020 dataset if it doesn't already exist.
+
+    Args:
+        data_root: Destination directory.
+        folder_id: Google Drive folder ID containing the images.
+        download_images: Whether to download the image folder.
+        download_csv: Whether to download the CSV splits.
+        max_attempts: Max times to retry a throttled download.
+        retry_delay: Initial retry delay in seconds (doubles each retry).
+    """
     from data.downloader import download_wfd_dataset
 
     images_dir = os.path.join(data_root, "wfd_dataset")
@@ -84,15 +95,30 @@ def download_data(data_root: str):
         )
     )
 
-    if images_exist and csv_exist:
+    if download_images and images_exist:
+        print(f"Images already downloaded at {images_dir}, skipping.")
+        download_images = False
+    if download_csv and csv_exist:
+        print(f"CSVs already downloaded at {csv_dir}, skipping.")
+        download_csv = False
+
+    if not download_images and not download_csv:
         print("Dataset already downloaded, skipping.")
         return
 
-    download_wfd_dataset(
-        data_root=data_root,
-        download_images=not images_exist,
-        download_csv=not csv_exist,
-    )
+    kwargs = {
+        "data_root": data_root,
+        "download_images": download_images,
+        "download_csv": download_csv,
+    }
+    if folder_id is not None:
+        kwargs["folder_id"] = folder_id
+    if max_attempts is not None:
+        kwargs["max_attempts"] = max_attempts
+    if retry_delay is not None:
+        kwargs["retry_delay"] = retry_delay
+
+    download_wfd_dataset(**kwargs)
 
 
 def run_experiment(name, seed=None, data_root=None):
@@ -171,6 +197,16 @@ def main():
     parser.add_argument('--all', action='store_true', help='Run all registered experiments')
     parser.add_argument('--download', action='store_true',
                         help='Download dataset from Google Drive before running')
+    parser.add_argument('--folder-id', default=None,
+                        help='Google Drive folder ID containing the images')
+    parser.add_argument('--skip-images', action='store_true',
+                        help='Skip downloading the image folder')
+    parser.add_argument('--skip-csv', action='store_true',
+                        help='Skip downloading the CSV files')
+    parser.add_argument('--max-attempts', type=int, default=None,
+                        help='Max times to retry a throttled download')
+    parser.add_argument('--retry-delay', type=float, default=None,
+                        help='Initial retry delay in seconds (doubles each retry)')
     parser.add_argument('--data-root', default=None,
                         help='Local data directory (overrides config paths)')
     parser.add_argument('--seed', type=int, default=None, help='Random seed (overrides config)')
@@ -183,7 +219,14 @@ def main():
     # Resolve data root
     data_root = args.data_root
     if args.download:
-        download_data(data_root or 'data/wfd')
+        download_data(
+            data_root or 'data/wfd',
+            folder_id=args.folder_id,
+            download_images=not args.skip_images,
+            download_csv=not args.skip_csv,
+            max_attempts=args.max_attempts,
+            retry_delay=args.retry_delay,
+        )
         if data_root is None:
             data_root = 'data/wfd'
 
