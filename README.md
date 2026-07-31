@@ -9,19 +9,20 @@ The dataset contains RGB images of wheat plants with **7 multi-label classes**: 
 ## Project Structure
 
 ```
-├── configs/           # Experiment configuration dataclasses
-├── data/              # Dataset, augmentations, Google Drive downloader
-├── models/            # Model builder (timm factory)
-├── training/          # Trainer, reproducibility utilities
-├── evaluation/        # Metrics, plotting, benchmarking (CSV + JSON)
-├── experiments/       # Experiment registry
-├── outputs/           # All generated artifacts (gitignored)
-│   ├── checkpoints/   # Best model weights
-│   ├── logs/          # Training history & experiment summaries
-│   ├── figures/       # Per-experiment & cross-experiment plots
-│   └── benchmark/     # Comparison CSV and JSON across experiments
-├── pipeline.py        # CLI entry point
-└── run_pipeline.sh    # Shell launcher
+├── configs/                   # Experiment configuration dataclasses
+├── data/                      # Dataset, augmentations, Google Drive downloader
+├── models/                    # Model builder (timm factory)
+├── training/                  # Trainer, reproducibility utilities
+├── evaluation/                # Metrics, plotting, benchmarking (CSV + JSON)
+├── experiments/               # Experiment registry
+├── outputs/                   # All generated artifacts (gitignored)
+│   ├── checkpoints/           # Best model weights
+│   ├── logs/                  # Training history & experiment summaries
+│   ├── figures/               # Per-experiment & cross-experiment plots
+│   ├── benchmark/             # Comparison CSV and JSON across experiments
+│   └── pipeline_checkpoint.json  # Resume state for the experiment loop
+├── pipeline.py                # CLI entry point
+└── run_pipeline.sh            # Shell launcher
 ```
 
 See `architecture.md` for full details on design decisions and how to extend the project.
@@ -39,6 +40,12 @@ python pipeline.py --download
 ```
 
 This downloads the image folder and CSVs to `data/wfd/`. Requires `gdown` (included in `requirements.txt`).
+
+Google Drive throttles large downloads, so the downloader retries automatically with exponential backoff (default 5 attempts, starting at 5s) and resumes interrupted files where possible. Each file in a folder is downloaded individually so a throttled file is retried on its own instead of restarting the whole folder. Tune with:
+
+```bash
+python pipeline.py --download --max-attempts 10 --retry-delay 10
+```
 
 ### Option B: Manual paths
 
@@ -64,6 +71,21 @@ python pipeline.py --download
 # Via shell script (downloads + runs all by default)
 ./run_pipeline.sh
 ./run_pipeline.sh --no-download efficientnet_b4
+```
+
+## Checkpointing & Resume
+
+The pipeline checkpoints progress after each completed experiment to `outputs/pipeline_checkpoint.json`. If a run is interrupted (e.g. a crash or Ctrl-C), simply re-run the same command and it will **resume from the last completed experiment** — finished experiments are skipped and their stored summaries are reused for the benchmark/comparison.
+
+- An experiment is re-run automatically only if its config fingerprint changed (seed, data root, hyperparameters, etc.).
+- `--checkpoint <path>` points at a different checkpoint file.
+- `--reset` ignores and clears the existing checkpoint so everything runs again.
+
+```bash
+python pipeline.py --all                    # run everything
+python pipeline.py --all                    # re-run: skips completed experiments
+python pipeline.py --all --reset            # force a full re-run
+python pipeline.py --all --checkpoint outputs/my_run.json
 ```
 
 ## Experiments
@@ -99,17 +121,18 @@ outputs/
 │   └── convnext_medium_img224_bs8_lr2e-05/
 ├── logs/
 │   └── *.json              # History + summary per experiment
-└── figures/
-    ├── comparison/
-    │   ├── f1_comparison.png
-    │   └── per_class_comparison.png
-    ├── efficientnet_b4_.../
-    │   ├── loss_curves.png
-    │   ├── f1_micro_curve.png
-    │   ├── f1_per_class.png
-    │   ├── pr_curves.png
-    │   └── confusion_matrices.png
-    └── convnext_*_.../
+├── figures/
+│   ├── comparison/
+│   │   ├── f1_comparison.png
+│   │   └── per_class_comparison.png
+│   ├── efficientnet_b4_.../
+│   │   ├── loss_curves.png
+│   │   ├── f1_micro_curve.png
+│   │   ├── f1_per_class.png
+│   │   ├── pr_curves.png
+│   │   └── confusion_matrices.png
+│   └── convnext_*_.../
+└── pipeline_checkpoint.json   # Resume state (completed experiments)
 ```
 
 ## Adding a New Experiment
