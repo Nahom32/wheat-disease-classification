@@ -97,12 +97,14 @@ def _list_folder_files(folder_id: str):
     from gdown.download import _get_session
 
     url = f"https://drive.google.com/drive/folders/{folder_id}"
-    sess = _get_session(
+    sess, _ = _get_session(
+        proxy=None,
+        use_cookies=True,
         user_agent=(
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/98.0.4758.102 Safari/537.36"
-        )
+        ),
     )
     return_code, gdrive_file = _download_and_parse_google_drive_link(
         sess, url, quiet=True, verify=True
