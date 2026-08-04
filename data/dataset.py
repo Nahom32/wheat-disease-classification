@@ -28,6 +28,12 @@ class WFD2020Dataset(Dataset):
         image_id = self.image_ids[idx]
         image_path = os.path.join(self.image_dir, image_id)
         image = cv2.imread(image_path)
+        if image is None:
+            raise FileNotFoundError(
+                f"Could not read image at {image_path!r} (missing, unreadable, "
+                f"or a directory). Check that image_dir matches where the "
+                f"images are stored."
+            )
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         label = torch.tensor(self.labels[idx], dtype=torch.float32)
