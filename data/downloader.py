@@ -11,9 +11,9 @@ FOLDER_ID = "1Mv2xgnbFT2y8diDKu01nOcP4BpY-7i4F"
 # Known CSV file IDs — extracted from the public WFD-2020 dataset.
 # These are the train/valid/test CSV splits.
 CSV_FILE_IDS = {
-    "data_train.csv": None,
-    "data_valid.csv": None,
-    "data_test.csv": None,
+    "data_train.csv": "1aRt-vOy-au59yGS7rdbRTI2wKWa7QKfZ",
+    "data_valid.csv": "1EbAa1m32FWK2I6asBw5gZzwaiCebJRqm",
+    "data_test.csv": "1L8AIshTV1ZnXYG9EIo-Db62VQptFFWQg",
 }
 
 DEFAULT_MAX_ATTEMPTS = 5
