@@ -56,7 +56,7 @@ def get_train_transforms(cfg):
             ToTensorV2(),
         ]),
         'convnext_train': A.Compose([
-            A.RandomResizedCrop(height=cfg.image_size, width=cfg.image_size, p=1.0),
+            A.RandomResizedCrop(size=cfg.image_size, p=1.0),
             A.Transpose(p=0.5),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
