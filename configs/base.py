@@ -6,7 +6,7 @@ import torch
 @dataclass
 class BaseConfig:
     # Paths
-    image_dir: str = '/content/drive/MyDrive/wfd_dataset/'
+    image_dir: str = '/content/drive/MyDrive/'
     train_csv: str = '/content/drive/MyDrive/data_train.csv'
     valid_csv: str = '/content/drive/MyDrive/data_valid.csv'
     test_csv: str = '/content/drive/MyDrive/data_test.csv'
