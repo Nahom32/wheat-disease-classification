@@ -61,7 +61,7 @@ def resolve_paths(cfg, data_root=None):
     """Update config paths if a local data root is provided."""
     if data_root is None:
         return cfg
-    cfg.image_dir = os.path.join(data_root, "wfd_dataset")
+    cfg.image_dir = data_root
     cfg.train_csv = os.path.join(data_root, "csv", "data_train.csv")
     cfg.valid_csv = os.path.join(data_root, "csv", "data_valid.csv")
     cfg.test_csv = os.path.join(data_root, "csv", "data_test.csv")
@@ -83,7 +83,7 @@ def download_data(data_root: str, folder_id: str = None, download_images: bool =
     """
     from data.downloader import download_wfd_dataset
 
-    images_dir = os.path.join(data_root, "wfd_dataset")
+    images_dir = data_root
     csv_dir = os.path.join(data_root, "csv")
 
     images_exist = os.path.isdir(images_dir) and bool(os.listdir(images_dir))

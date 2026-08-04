@@ -211,13 +211,13 @@ def download_wfd_dataset(
     result = {}
 
     if download_images:
-        images_dir = Path(data_root) / "wfd_dataset"
+        images_dir = Path(data_root)
         if images_dir.exists() and any(images_dir.iterdir()):
             print(f"Image directory {images_dir} already exists and is non-empty, skipping.")
         else:
             download_folder(
                 folder_id,
-                str(images_dir.parent),
+                str(images_dir),
                 max_attempts=max_attempts,
                 retry_delay=retry_delay,
             )
